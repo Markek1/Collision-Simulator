@@ -8,3 +8,8 @@ edition = "2021"
 [dependencies]
 macroquad = "0.3.23"
 rand = "0.8.5"
+
+[profile.release]
+strip = true
+lto = true
+panic = "abort"
