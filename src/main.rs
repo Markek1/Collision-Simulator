@@ -51,7 +51,9 @@ impl Ball {
         other.pos.distance(self.pos) <= other.r + self.r
     }
 
-    // // Does collision effect for both self and the other object
+    // Does collision effect for both self and the other object
+    // Based on https://www.vobarian.com/collisions/2dcollisions2.pdf
+    // The individual steps from the document are commented
     fn collide(&mut self, other: &mut Ball) {
         let pos_diff = self.pos - other.pos;
 
@@ -77,8 +79,15 @@ impl Ball {
         let final_v2n = new_v2n * unit_normal;
         let final_v2t = v2t * unit_tangent;
 
-        self.v = final_v1n + final_v1t;
-        other.v = final_v2n + final_v2t;
+        // 7
+        let final_v1 = final_v1n + final_v1t;
+        let final_v2 = final_v2n + final_v2t;
+
+        // The if statement makes them not get stuck in each other
+        if (final_v1 - final_v2).dot(self.pos - other.pos) > 0. {
+            self.v = final_v1;
+            other.v = final_v2;
+        }
     }
 }
 
@@ -91,9 +100,10 @@ async fn main() {
     let mut balls = Vec::with_capacity(n_balls);
 
     for i in 0..n_balls {
-        let r = rng.gen::<f32>() * 8. + 4.;
+        let max_r = 6.;
+        let r = rng.gen::<f32>() * max_r + 4.;
         balls.push(Ball {
-            pos: Vec2::from((25. + r * 3. * i as f32, 25. + r * 1.5 * i as f32)),
+            pos: Vec2::from((r * 2. + r * 2. * i as f32, r * 2. + r * i as f32)),
             v: Vec2::from((rng.gen::<f32>() * 4. - 2., rng.gen::<f32>() * 4. - 2.)),
             r: r,
             mass: PI * r.powf(2.),
@@ -112,8 +122,10 @@ async fn main() {
         }
 
         if !paused {
+            let dt = get_frame_time();
+
             for ball in balls.iter_mut() {
-                ball.update(get_frame_time(), G);
+                ball.update(dt, G);
             }
 
             for i in 0..(balls.len() - 1) {
