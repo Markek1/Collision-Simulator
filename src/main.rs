@@ -5,7 +5,6 @@ use rand::Rng;
 extern crate rand;
 
 const WINDOW_SIZE: Vec2 = const_vec2!([1400., 800.]);
-const G: Vec2 = const_vec2!([0., 0.]);
 
 fn window_config() -> Conf {
     Conf {
@@ -100,8 +99,8 @@ async fn main() {
     let mut balls = Vec::with_capacity(n_balls);
 
     for i in 0..n_balls {
-        let max_r = 6.;
-        let r = rng.gen::<f32>() * max_r + 4.;
+        let max_r = 8.;
+        let r = rng.gen::<f32>() * max_r + max_r / 2.;
         balls.push(Ball {
             pos: Vec2::from((r * 2. + r * 2. * i as f32, r * 2. + r * i as f32)),
             v: Vec2::from((rng.gen::<f32>() * 4. - 2., rng.gen::<f32>() * 4. - 2.)),
@@ -116,16 +115,40 @@ async fn main() {
         })
     }
 
+    // acceleration
+    let mut a;
+    let strength = 5.;
+
     loop {
         if is_key_pressed(KeyCode::Space) {
             paused = !paused;
+        }
+
+        a = Vec2::ZERO;
+        if is_key_down(KeyCode::Left) {
+            a.x = -strength;
+        }
+        if is_key_down(KeyCode::Up) {
+            a.y = -strength;
+        }
+        if is_key_down(KeyCode::Right) {
+            a.x = strength;
+        }
+        if is_key_down(KeyCode::Down) {
+            a.y = strength;
+        }
+
+        if is_key_down(KeyCode::S) {
+            for ball in &mut balls {
+                ball.v *= 0.9;
+            }
         }
 
         if !paused {
             let dt = get_frame_time();
 
             for ball in balls.iter_mut() {
-                ball.update(dt, G);
+                ball.update(dt, a);
             }
 
             for i in 0..(balls.len() - 1) {
