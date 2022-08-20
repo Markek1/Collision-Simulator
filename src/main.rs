@@ -83,7 +83,7 @@ impl Ball {
         let final_v2 = final_v2n + final_v2t;
 
         // The if statement makes them not get stuck in each other
-        if (final_v1 - final_v2).dot(self.pos - other.pos) > 0. {
+        if (self.v - other.v).dot(self.pos - other.pos) < 0. {
             self.v = final_v1;
             other.v = final_v2;
         }
@@ -94,8 +94,9 @@ impl Ball {
 async fn main() {
     let mut rng = rand::thread_rng();
     let mut paused = true;
+    let mut drawing_enabled = true;
 
-    let n_balls = 100;
+    let n_balls = 150;
     let mut balls = Vec::with_capacity(n_balls);
 
     for i in 0..n_balls {
@@ -119,9 +120,14 @@ async fn main() {
     let mut a;
     let strength = 5.;
 
+    println!("{}", std::mem::size_of::<Ball>());
+
     loop {
         if is_key_pressed(KeyCode::Space) {
             paused = !paused;
+        }
+        if is_key_pressed(KeyCode::V) {
+            drawing_enabled = !drawing_enabled;
         }
 
         a = Vec2::ZERO;
@@ -151,19 +157,46 @@ async fn main() {
                 ball.update(dt, a);
             }
 
-            for i in 0..(balls.len() - 1) {
-                let (left, right) = balls.split_at_mut(i + 1);
-                for other_ball in right {
-                    if left[i].check_collision(other_ball) {
-                        left[i].collide(other_ball);
+            balls.sort_by(|a, b| a.pos.x.partial_cmp(&b.pos.x).unwrap());
+            let mut left_ball = 0;
+            let mut right_bound = balls[left_ball].pos.x + balls[left_ball].r;
+
+            for i in 1..balls.len() {
+                if balls[i].pos.x - balls[i].r <= right_bound {
+                    if balls[i].pos.x + balls[i].r > right_bound {
+                        right_bound = balls[i].pos.x + balls[i].r;
                     }
+
+                    let (left, right) = balls.split_at_mut(i);
+
+                    for other_ball in &mut left[left_ball..i] {
+                        if right[0].check_collision(other_ball) {
+                            right[0].collide(other_ball);
+                        }
+                    }
+                } else {
+                    left_ball = i;
+                    right_bound = balls[i].pos.x + balls[i].r;
                 }
             }
+
+            // for i in 0..(balls.len() - 1) {
+            //     let (left, right) = balls.split_at_mut(i + 1);
+            //     for other_ball in right {
+            //         if left[i].check_collision(other_ball) {
+            //             left[i].collide(other_ball);
+            //         }
+            //     }
+            // }
         }
 
         clear_background(BLACK);
-        for ball in &balls {
-            ball.draw();
+        if drawing_enabled {
+            for ball in &balls {
+                if ball.pos.x < 1400. && ball.pos.y < 1000. {
+                    ball.draw();
+                }
+            }
         }
 
         next_frame().await
